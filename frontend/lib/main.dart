@@ -685,6 +685,7 @@ class _HotelSearchPageState extends State<HotelSearchPage> {
   int _scoreHotel(HotelRow a, HotelRow b) {
     var score = 0;
     if (a.nightlyRate <= b.nightlyRate) score++;
+    if (a.drivingCost <= b.drivingCost) score++;
     if (a.walkMins <= b.walkMins) score++;
     if (a.transitSavedMins >= b.transitSavedMins) score++;
     return score;
@@ -1257,6 +1258,11 @@ class _ComparePlanCard extends StatelessWidget {
         '\$${row.nightlyRate} / night',
         wins: other != null && row.nightlyRate < other!.nightlyRate,
         ties: other != null && row.nightlyRate == other!.nightlyRate,
+      ),
+      _FeatureRow(
+        'Driving Cost: \$${row.drivingCost} total (incl. parking)',
+        wins: other != null && row.drivingCost < other!.drivingCost,
+        ties: other != null && row.drivingCost == other!.drivingCost,
       ),
       _FeatureRow(
         '${row.walkMins.toStringAsFixed(1)} min walk to park',

@@ -7,8 +7,11 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
-from data.hotels import DISNEYLAND_GATES, HOTEL_ANALYSIS, HOTELS
+from data.hotels import DISNEYLAND_GATES, HOTEL_ANALYSIS, HOTELS, parkingcost
 from services.directions import walking_route
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
@@ -16,7 +19,10 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger("disneyland-api")
 
+limiter = Limiter(key_func=get_remote_address)
 app = FastAPI(title="Disneyland Hotel API", version="1.1.0")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 @app.on_event("startup")
@@ -63,6 +69,7 @@ class HotelRow(BaseModel):
     hotel: str
     address: str
     nightly_rate: int
+    drivingcost: int
     walk_mins: float
     transit_mins: float | None
     transit_saved_mins: float
@@ -86,10 +93,12 @@ def _build_row(name: str) -> HotelRow | None:
     if not base or not stats:
         return None
     transit = stats["transit_mins"]
+    nightly_rate = stats["nightly_rate"]
     return HotelRow(
         hotel=base["name"],
         address=base["address"],
-        nightly_rate=stats["nightly_rate"],
+        nightly_rate=nightly_rate,
+        drivingcost=nightly_rate + parkingcost,
         walk_mins=stats["walk_mins"],
         transit_mins=transit if transit is not None else None,
         transit_saved_mins=stats["transit_saved_mins"],
@@ -129,7 +138,9 @@ def suggest_hotels(q: str = Query("", description="Partial hotel name")):
 
 
 @app.get("/api/hotels/search", response_model=HotelRow)
+@limiter.limit("30/minute")
 def search_hotel(
+    request: Request,
     q: str = Query(..., min_length=1, description="Hotel name to search"),
     exact: bool = Query(False, description="Require exact hotel name match"),
 ):
@@ -154,7 +165,9 @@ def search_hotel(
 
 
 @app.get("/api/hotels/route", response_model=HotelRouteResponse)
+@limiter.limit("10/minute")
 def hotel_route(
+    request: Request,
     hotel: str = Query(..., min_length=1, description="Exact hotel name"),
 ):
     """Walking route from hotel to Disneyland gates via Google Directions API."""

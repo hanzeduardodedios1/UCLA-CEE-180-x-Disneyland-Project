@@ -22,6 +22,7 @@ void main() {
             'hotel': 'Disneyland Hotel',
             'address': '1150 W Magic Way, Anaheim, CA 92802',
             'nightly_rate': 400,
+            'drivingcost': 440,
             'walk_mins': 5.0,
             'transit_mins': null,
             'transit_saved_mins': 0.0,

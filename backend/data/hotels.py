@@ -1,6 +1,7 @@
 """Disneyland-area hotel dataset (rates + walk/transit from Google Maps analysis)."""
 
 DISNEYLAND_GATES = "1313 S Harbor Blvd, Anaheim, CA 92802"
+parkingcost = 40
 
 HOTELS = [
     {"name": "Tropicana Inn & Suites", "address": "1540 S Harbor Blvd, Anaheim, CA 92802", "avg_nightly_rate": 250},
