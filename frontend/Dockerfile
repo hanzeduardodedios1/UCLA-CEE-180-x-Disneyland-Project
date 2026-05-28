@@ -24,7 +24,12 @@ COPY pubspec.yaml pubspec.lock ./
 RUN flutter pub get
 
 COPY . .
-RUN flutter build web --release --dart-define=API_BASE_URL=/api
+
+ARG GOOGLE_MAPS_JS_API_KEY
+ARG API_BASE_URL=/api
+RUN flutter build web --release \
+    --dart-define=GOOGLE_MAPS_JS_API_KEY=$GOOGLE_MAPS_JS_API_KEY \
+    --dart-define=API_BASE_URL=$API_BASE_URL
 
 FROM nginx:alpine
 

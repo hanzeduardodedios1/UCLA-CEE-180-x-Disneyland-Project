@@ -430,67 +430,51 @@ class _HotelSearchPageState extends State<HotelSearchPage> {
   }
 
   Widget _buildBrowseTab(bool wide) {
-    final padding = EdgeInsets.fromLTRB(wide ? 32 : 20, 24, wide ? 32 : 20, 32);
+    final padding = EdgeInsets.fromLTRB(wide ? 32 : 20, 20, wide ? 32 : 20, 32);
 
     return SingleChildScrollView(
       padding: padding,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Hotels overview',
-            style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontSize: wide ? 32 : 26),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Search, pick favorites, and compare walk & transit to Disneyland.',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
-          ),
-          const SizedBox(height: 24),
-          _HeroBanner(
-            onCompare: () => setState(() => _navIndex = 1),
-            slotsFilled: _comparison.length,
-          ),
-          const SizedBox(height: 28),
-          if (wide)
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(child: _SpotlightCard(
-                    title: 'Top picks for you',
-                    subtitle: 'Curated hotels near the resort',
-                    tint: AppColors.chipBlue,
-                    icon: Icons.recommend_outlined,
-                    onTap: () => _search(_quickPicks.first.hotelName),
-                  )),
-                  const SizedBox(width: 16),
-                  Expanded(child: _SpotlightCard(
-                    title: 'Side-by-side compare',
-                    subtitle: 'Rates, walk & transit in one view',
-                    tint: AppColors.chipPeach,
-                    icon: Icons.compare,
-                    onTap: () => setState(() => _navIndex = 1),
-                  )),
-                ],
-              ),
-            ),
-          const SizedBox(height: 28),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Text(
-                'Featured hotels',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Featured hotels',
+                      style: TextStyle(
+                        fontSize: wide ? 22 : 20,
+                        fontWeight: FontWeight.w800,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Pick a property below or use search to compare walk & transit.',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: wide ? 14 : 13,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               if (_filteredPicks.isNotEmpty)
-                Text(
-                  '${_filteredPicks.length} shown',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                Padding(
+                  padding: const EdgeInsets.only(left: 12, bottom: 2),
+                  child: Text(
+                    '${_filteredPicks.length} shown',
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
                 ),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: wide ? 24 : 20),
           LayoutBuilder(
             builder: (context, constraints) {
               final cardWidth = wide
@@ -514,8 +498,7 @@ class _HotelSearchPageState extends State<HotelSearchPage> {
             },
           ),
           if (_comparison.isNotEmpty) ...[
-            const SizedBox(height: 28),
-            const SizedBox(height: 32),
+            SizedBox(height: wide ? 36 : 28),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -883,122 +866,6 @@ class _PillNavItem extends StatelessWidget {
                   child: Text(badge!, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700)),
                 ),
               ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _HeroBanner extends StatelessWidget {
-  const _HeroBanner({required this.onCompare, required this.slotsFilled});
-
-  final VoidCallback onCompare;
-  final int slotsFilled;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(AppDecor.radiusLg),
-        gradient: const LinearGradient(
-          colors: [AppColors.heroPurple, AppColors.heroPurpleDeep],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Find your best stay\nnear Disneyland',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    height: 1.2,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  slotsFilled == 0
-                      ? 'Compare nightly rates, walk time, and transit savings.'
-                      : '$slotsFilled of 2 hotels in your compare queue.',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-                ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: onCompare,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: Text(slotsFilled == 2 ? 'View comparison' : 'Start comparing'),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Icon(Icons.castle_outlined, size: 72, color: AppColors.accent.withValues(alpha: 0.35)),
-        ],
-      ),
-    );
-  }
-}
-
-class _SpotlightCard extends StatelessWidget {
-  const _SpotlightCard({
-    required this.title,
-    required this.subtitle,
-    required this.tint,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final Color tint;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(AppDecor.radiusMd),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppDecor.radiusMd),
-        child: Ink(
-          decoration: AppDecor.surfaceCard(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  color: tint,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(AppDecor.radiusMd - 1)),
-                ),
-                child: Center(child: Icon(icon, size: 48, color: AppColors.textPrimary.withValues(alpha: 0.5))),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                    const SizedBox(height: 6),
-                    Text(subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                  ],
-                ),
-              ),
             ],
           ),
         ),
