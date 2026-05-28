@@ -8,6 +8,9 @@ import 'theme/app_theme.dart';
 import 'widgets/hotel_route_map.dart';
 import 'widgets/hotel_search_field.dart';
 
+const _budgetMaxNightlyRate = 175;
+const _walkFriendlyMaxMins = 15.0;
+
 void main() {
   runApp(const DisneylandHotelsApp());
 }
@@ -41,13 +44,6 @@ class HotelSearchPage extends StatefulWidget {
 
 class _HotelSearchPageState extends State<HotelSearchPage> {
   static const _maxCompare = 2;
-
-  static const _quickPicks = [
-    _QuickPick('Disneyland Hotel', 'Disneyland Hotel', 'Disney', Icons.castle, Color(0xFF7C3AED)),
-    _QuickPick('Park Vue Inn', 'Park Vue Inn', 'Park Vue', Icons.nightlight_round, Color(0xFF2563EB)),
-    _QuickPick('Clarion Hotel Anaheim', 'Clarion Hotel', 'Clarion', Icons.savings, Color(0xFFD97706)),
-    _QuickPick("Disney's Grand Californian Hotel", 'Grand Californian', 'Grand Cal', Icons.star, Color(0xFF059669)),
-  ];
 
   static const _sidebarCategories = [
     _SidebarItem('All hotels', Icons.grid_view_rounded),
@@ -183,17 +179,34 @@ class _HotelSearchPageState extends State<HotelSearchPage> {
   bool _isDisneyProperty(String name) =>
       name.toLowerCase().contains('disney');
 
-  List<_QuickPick> get _filteredPicks {
+  _BrowseStats? _statsFor(String name) => _browseStatsByHotel[name];
+
+  bool _isBudgetHotel(String name) {
+    final rate = _statsFor(name)?.nightlyRate;
+    return rate != null && rate <= _budgetMaxNightlyRate;
+  }
+
+  bool _isWalkFriendlyHotel(String name) {
+    final walk = _statsFor(name)?.walkMins;
+    return walk != null && walk <= _walkFriendlyMaxMins;
+  }
+
+  bool _matchesCategory(String name) {
     switch (_categoryIndex) {
       case 1:
-        return _quickPicks.where((p) => _isDisneyProperty(p.hotelName)).toList();
+        return _isDisneyProperty(name);
       case 2:
-        return [_quickPicks[2]];
+        return _isBudgetHotel(name);
       case 3:
-        return [_quickPicks[1], _quickPicks[2]];
+        return _isWalkFriendlyHotel(name);
       default:
-        return _quickPicks;
+        return true;
     }
+  }
+
+  List<String> get _filteredHotels {
+    final matches = _hotelNames.where(_matchesCategory).toList()..sort();
+    return matches;
   }
 
   @override
@@ -431,97 +444,125 @@ class _HotelSearchPageState extends State<HotelSearchPage> {
 
   Widget _buildBrowseTab(bool wide) {
     final padding = EdgeInsets.fromLTRB(wide ? 32 : 20, 20, wide ? 32 : 20, 32);
+    final filtered = _filteredHotels;
+    final crossAxisCount = wide ? 4 : 2;
 
-    return SingleChildScrollView(
-      padding: padding,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Featured hotels',
-                      style: TextStyle(
-                        fontSize: wide ? 22 : 20,
-                        fontWeight: FontWeight.w800,
-                        color: Theme.of(context).colorScheme.onSurface,
+    if (_loadingNames) {
+      return const Center(
+        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accent),
+      );
+    }
+
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+      slivers: [
+        SliverPadding(
+          padding: padding,
+          sliver: SliverToBoxAdapter(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Featured hotels',
+                        style: TextStyle(
+                          fontSize: wide ? 22 : 20,
+                          fontWeight: FontWeight.w800,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
                       ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Pick a property below or use search to compare walk & transit.',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: wide ? 14 : 13,
+                          height: 1.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (filtered.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12, bottom: 2),
+                    child: Text(
+                      '${filtered.length} shown',
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Pick a property below or use search to compare walk & transit.',
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: wide ? 14 : 13,
-                        height: 1.35,
-                      ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        if (filtered.isEmpty)
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(padding.left, 0, padding.right, padding.bottom),
+            sliver: const SliverToBoxAdapter(
+              child: Text(
+                'No hotels match this category.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              ),
+            ),
+          )
+        else
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(padding.left, 20, padding.right, 0),
+            sliver: SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: wide ? 0.78 : 0.72,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  final name = filtered[index];
+                  final inCompare = _comparison.any((r) => r.hotel == name);
+                  return _FeaturedHotelCard(
+                    hotelName: name,
+                    inCompare: inCompare,
+                    onTap: () => _search(name),
+                  );
+                },
+                childCount: filtered.length,
+              ),
+            ),
+          ),
+        if (_comparison.isNotEmpty)
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(padding.left, wide ? 36 : 28, padding.right, padding.bottom),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Your comparison', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                    TextButton(
+                      onPressed: () => setState(() => _navIndex = 1),
+                      child: const Text('Full compare →'),
                     ),
                   ],
                 ),
-              ),
-              if (_filteredPicks.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(left: 12, bottom: 2),
-                  child: Text(
-                    '${_filteredPicks.length} shown',
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                const SizedBox(height: 14),
+                ..._comparison.map(
+                  (row) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _CompactCompareTile(
+                      row: row,
+                      onRemove: () => _removeHotel(row.hotel),
+                    ),
                   ),
                 ),
-            ],
-          ),
-          SizedBox(height: wide ? 24 : 20),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final cardWidth = wide
-                  ? (constraints.maxWidth - 32) / 4
-                  : (constraints.maxWidth - 12) / 2;
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: _filteredPicks.map((pick) {
-                  final inCompare = _comparison.any((r) => r.hotel == pick.hotelName);
-                  return SizedBox(
-                    width: cardWidth.clamp(140, 280),
-                    child: _FeaturedHotelCard(
-                      pick: pick,
-                      inCompare: inCompare,
-                      onTap: () => _search(pick.hotelName),
-                    ),
-                  );
-                }).toList(),
-              );
-            },
-          ),
-          if (_comparison.isNotEmpty) ...[
-            SizedBox(height: wide ? 36 : 28),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Your comparison', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                TextButton(
-                  onPressed: () => setState(() => _navIndex = 1),
-                  child: const Text('Full compare →'),
-                ),
-              ],
+              ]),
             ),
-            const SizedBox(height: 14),
-            ..._comparison.map(
-              (row) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _CompactCompareTile(
-                  row: row,
-                  onRemove: () => _removeHotel(row.hotel),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
+          )
+        else
+          SliverPadding(padding: EdgeInsets.only(bottom: padding.bottom)),
+      ],
     );
   }
 
@@ -874,28 +915,79 @@ class _PillNavItem extends StatelessWidget {
   }
 }
 
-class _QuickPick {
-  const _QuickPick(this.hotelName, this.title, this.shortLabel, this.icon, this.brandColor);
-  final String hotelName;
-  final String title;
-  final String shortLabel;
-  final IconData icon;
-  final Color brandColor;
+class _BrowseStats {
+  const _BrowseStats(this.nightlyRate, this.walkMins);
+  final int nightlyRate;
+  final double walkMins;
 }
+
+const _browseStatsByHotel = <String, _BrowseStats>{
+  'Tropicana Inn & Suites': _BrowseStats(250, 11.1),
+  'Holiday Inn Express': _BrowseStats(180, 17.9),
+  'Clarion Hotel Anaheim': _BrowseStats(130, 25.9),
+  'Park Vue Inn': _BrowseStats(260, 10.5),
+  'Camelot Inn & Suites': _BrowseStats(240, 12.4),
+  'The Anaheim Hotel': _BrowseStats(215, 14.9),
+  'Castle Inn and Suites': _BrowseStats(195, 16.5),
+  'Best Western Plus Anaheim Inn': _BrowseStats(225, 12.6),
+  'Days Inn & Suites by Wyndham': _BrowseStats(145, 24.5),
+  'Staybridge Suites Anaheim At The Park': _BrowseStats(210, 32.6),
+  'Hyatt House at Anaheim Resort': _BrowseStats(275, 20.2),
+  'Anaheim Desert Inn & Suites': _BrowseStats(210, 11.4),
+  'Del Sol Inn': _BrowseStats(185, 12.5),
+  'Stanford Inn & Suites': _BrowseStats(140, 34.5),
+  'Grand Legacy At The Park': _BrowseStats(235, 14.2),
+  'Howard Johnson by Wyndham Anaheim': _BrowseStats(245, 15.7),
+  'Courtyard by Marriott Theme Park Entrance': _BrowseStats(310, 15.4),
+  'Fairfield by Marriott Anaheim Resort': _BrowseStats(255, 15.1),
+  'Best Western Plus Park Place Mini-Suites': _BrowseStats(250, 10.5),
+  'Kings Inn Anaheim': _BrowseStats(135, 21.6),
+  'Cortona Inn & Suites': _BrowseStats(160, 27.3),
+  'DoubleTree Suites by Hilton Anaheim Resort': _BrowseStats(190, 29.4),
+  'Hilton Anaheim': _BrowseStats(215, 27.7),
+  'Anaheim Marriott': _BrowseStats(225, 28.6),
+  'JW Marriott, Anaheim Resort': _BrowseStats(380, 23.6),
+  'Element by Westin Anaheim Resort': _BrowseStats(215, 22.9),
+  'The Westin Anaheim Resort': _BrowseStats(340, 25.5),
+  'SunCoast Park Hotel Anaheim': _BrowseStats(205, 22.4),
+  'Alpine Inn': _BrowseStats(150, 21.1),
+  'Eden Roc Inn & Suites': _BrowseStats(125, 25.5),
+  'Anaheim Discovery Inn & Suites': _BrowseStats(115, 26.0),
+  'Desert Palms Hotel & Suites': _BrowseStats(195, 19.1),
+  'SpringHill Suites at Anaheim Resort': _BrowseStats(230, 20.7),
+  'Residence Inn at Anaheim Resort': _BrowseStats(240, 21.4),
+  'Homewood Suites by Hilton Anaheim Resort': _BrowseStats(235, 26.8),
+  'Hotel Lulu, BW Premier Collection': _BrowseStats(190, 21.3),
+  'Hotel Indigo Anaheim': _BrowseStats(195, 20.8),
+  'Clementine Hotel & Suites': _BrowseStats(210, 22.3),
+  'Disneyland Hotel': _BrowseStats(550, 14.1),
+  "Disney's Grand Californian Hotel": _BrowseStats(750, 19.5),
+  'Pixar Place Hotel': _BrowseStats(480, 21.1),
+  "Best Western Plus Stovall's Inn": _BrowseStats(185, 25.7),
+  'Best Western Plus Pavilions': _BrowseStats(170, 28.7),
+  'Quality Inn & Suites Anaheim at the Park': _BrowseStats(120, 27.6),
+  "Abby's Anaheimer Inn": _BrowseStats(110, 29.9),
+  'Anaheim Portofino Inn & Suites': _BrowseStats(155, 20.7),
+  'Sheraton Park Hotel at the Anaheim Resort': _BrowseStats(205, 23.5),
+  'Wyndham Anaheim': _BrowseStats(175, 20.1),
+  'Anaheim Majestic Garden Hotel': _BrowseStats(210, 30.1),
+  'Candy Cane Inn': _BrowseStats(235, 17.5),
+};
 
 class _FeaturedHotelCard extends StatelessWidget {
   const _FeaturedHotelCard({
-    required this.pick,
+    required this.hotelName,
     required this.inCompare,
     required this.onTap,
   });
 
-  final _QuickPick pick;
+  final String hotelName;
   final bool inCompare;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final presentation = _hotelCardPresentation(hotelName);
     return Material(
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(AppDecor.radiusMd),
@@ -907,38 +999,39 @@ class _FeaturedHotelCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                height: 88,
-                decoration: BoxDecoration(
-                  color: pick.brandColor,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(AppDecor.radiusMd - 1)),
-                ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(pick.icon, color: pick.brandColor, size: 26),
-                    ),
-                    if (inCompare)
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text('In compare', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: presentation.brandColor,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(AppDecor.radiusMd - 1)),
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
                         ),
+                        child: Icon(presentation.icon, color: presentation.brandColor, size: 26),
                       ),
-                  ],
+                      if (inCompare)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text('In compare', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
               Padding(
@@ -952,7 +1045,7 @@ class _FeaturedHotelCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      pick.title,
+                      presentation.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
@@ -971,6 +1064,41 @@ class _FeaturedHotelCard extends StatelessWidget {
       ),
     );
   }
+}
+
+({String title, IconData icon, Color brandColor}) _hotelCardPresentation(String name) {
+  if (name.toLowerCase().contains('disney')) {
+    return (
+      title: _shortHotelDisplayName(name),
+      icon: Icons.castle,
+      brandColor: const Color(0xFF7C3AED),
+    );
+  }
+  final stats = _browseStatsByHotel[name];
+  if (stats != null && stats.nightlyRate <= _budgetMaxNightlyRate) {
+    return (
+      title: _shortHotelDisplayName(name),
+      icon: Icons.savings,
+      brandColor: const Color(0xFFD97706),
+    );
+  }
+  if (stats != null && stats.walkMins <= _walkFriendlyMaxMins) {
+    return (
+      title: _shortHotelDisplayName(name),
+      icon: Icons.directions_walk,
+      brandColor: const Color(0xFF059669),
+    );
+  }
+  return (
+    title: _shortHotelDisplayName(name),
+    icon: Icons.hotel_rounded,
+    brandColor: const Color(0xFF2563EB),
+  );
+}
+
+String _shortHotelDisplayName(String name) {
+  if (name.length <= 28) return name;
+  return '${name.substring(0, 26)}…';
 }
 
 class _CompactCompareTile extends StatelessWidget {
