@@ -1,0 +1,20 @@
+name: disneyland-compare
+services:
+  - name: backend
+    github:
+      repo: hanzeduardodedios1/UCLA-CEE-180-x-Disneyland-Project
+      branch: main
+    source_dir: backend
+    dockerfile_path: Dockerfile
+    http_port: 8000
+    routes:
+      - path: /api
+  - name: frontend
+    github:
+      repo: hanzeduardodedios1/UCLA-CEE-180-x-Disneyland-Project
+      branch: main
+    source_dir: frontend
+    dockerfile_path: Dockerfile
+    http_port: 80
+    routes:
+      - path: /
