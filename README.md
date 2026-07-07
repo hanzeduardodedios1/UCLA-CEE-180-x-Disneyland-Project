@@ -5,9 +5,9 @@
 ![Google Maps](https://img.shields.io/badge/Google-Maps_API-4285F4?logo=googlemaps&logoColor=white)
 ![DigitalOcean](https://img.shields.io/badge/Deploy-DigitalOcean-0080FF?logo=digitalocean&logoColor=white)
 
-## The Hook
+## About
 
-Hotel comparison tool for Disneyland visitors. Surfaces **50** Anaheim-area hotels with pre-computed walk/transit times, nightly rates, and live walking routes to park gates so travelers can trade off cost, commute, and parking ($40/night modeled).
+UCLA CEE 180 x Disneyland Project is a hotel comparison application for Disneyland visitors. It indexes **50** Anaheim-area hotels with pre-computed walk and transit times, nightly rates, and live walking routes to park gates, helping travelers evaluate cost, commute time, and parking ($40/night modeled).
 
 ## System Architecture
 
